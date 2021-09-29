@@ -11,20 +11,47 @@ app.use(cookieParser());
 const bodyParser = require("body-parser");
 app.use(bodyParser.urlencoded({extended: true}));
 
+// "DATABASES"
 const urlDatabase = {
   "b2xVn2": "http://www.lighthouselabs.ca",
   "9sm5xK": "http://www.google.com"
 };
 
-//function to generate a randome String (6 char) for shortURL
-function generateRandomString() {
-  let randomStr = Math.random().toString(36).slice(7);
-  if (randomStr.length < 6) {
-    //add another "0" to the end if randomStr is only 5 chars
+const users = { 
+  "123": {
+    id: "123", 
+    email: "user@example.com", 
+    password: "abc"
+  },
+ "456": {
+    id: "456", 
+    email: "user2@example.com", 
+    password: "def"
+  }
+};
+
+//function to generate a random String (6 char) for shortURL
+function generateRandomString(lengthOfStr) {
+  let sliceIndex;
+  if (lengthOfStr === 6) {
+    sliceIndex = 7;
+  } else if (lengthOfStr === 3) {
+    sliceIndex = 10;
+  }
+
+  let randomStr = Math.random().toString(36).slice(sliceIndex);
+  if (randomStr.length < lengthOfStr) {
+    //add another "0" to the end if randomStr is only lengthOfStr-1 in length
     randomStr += "0";
   }
   return randomStr;
 }
+
+// //function to generate a random String (6 char) for shortURL
+// function generateRandomId() {
+//   let randomId = Math.floor(Math.random() * 2000) + 1;
+//   return randomId;
+// }
 
 //the home page
 app.get("/", (req, res) => {
@@ -44,20 +71,20 @@ app.get("/hello", (req, res) => {
 //gets page of URL index
 app.get("/urls", (req, res) => {
   //console.log("what is this:", req.cookies);
-  const templateVars = { urls: urlDatabase, username: req.cookies["username"] };
+  const templateVars = { urls: urlDatabase, userObject: users[req.cookies.user_id] };
   res.render("urls_index", templateVars);
 });
 
 //gets page for "creating a new URL"
 app.get("/urls/new", (req, res) => {
   //console.log("what is this:", req.cookies);
-  const templateVars = { username: req.cookies["username"] };
+  const templateVars = { userObject: users[req.cookies.user_id] };
   res.render("urls_new", templateVars);
 });
 
 //gets page of that "info"/edit page for that shortURL
 app.get("/urls/:shortURL", (req, res) => {
-  const templateVars = { shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL], username: req.cookies["username"] };
+  const templateVars = { shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL], userObject: users[req.cookies.user_id] };
   res.render("urls_show", templateVars);
 });
 
@@ -65,7 +92,7 @@ app.get("/urls/:shortURL", (req, res) => {
 //finally redirects to "info"/edit page for that shortURL
 app.post("/urls", (req, res) => {
   console.log(req.body);  // Log the POST request body to the console
-  const newShortURL = generateRandomString();
+  const newShortURL = generateRandomString(6);
   urlDatabase[newShortURL] = req.body["longURL"];
   console.log(urlDatabase);
   res.redirect("/urls/"+newShortURL);
@@ -108,6 +135,40 @@ app.post("/logout", (req, res) => {
   res.clearCookie("username");
   res.redirect("/urls");
 });
+
+//register endpoint: renders the register page
+app.get('/register', (req, res) => {
+  res.render('register');
+});
+
+app.post('/register', (req, res) => {
+  const email = req.body.email;
+  const password = req.body.password;
+  
+  // if(!email || !password) {
+  //   return res.status(400).send("no user name or password provided");
+  // }
+  
+  // const user = findUserByEmail(email);
+  
+  // if(user) {
+  //   return res.status(400).send("user already exists with that email");
+  // }
+  
+  const id = generateRandomString(3);
+  //I know in ES6 that we dont have to use blah:blah to explicitly define key:value pairs, but I
+  //want to write it like this so I understand better
+  users[id] = {
+    id: id, 
+    email: email,
+    password: password
+  }
+  console.log(users)
+
+  res.cookie("user_id", users[id]["id"]);
+
+  res.redirect('/urls')
+})
 
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`);

@@ -11,10 +11,10 @@
       </div>
     </div>
     <div>
-      <% if(username){ %>
+      <% if(userObject.email){ %>
         <div>
           <form method="POST" action="/logout">
-            Logged in as: <%= username %> &nbsp; &nbsp;
+            Logged in as: <%= userObject.email %> &nbsp; &nbsp;
             <button type="submit" class="btn btn-outline-secondary">Logout</button>
           </form>
         </div>
