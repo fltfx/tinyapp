@@ -1,8 +1,11 @@
 const express = require("express");
 const app = express();
+var cookieParser = require('cookie-parser')
+
 const PORT = 8080;
 
 app.set("view engine", "ejs");
+app.use(cookieParser());
 
 //middleware
 const bodyParser = require("body-parser");
@@ -40,19 +43,21 @@ app.get("/hello", (req, res) => {
 
 //gets page of URL index
 app.get("/urls", (req, res) => {
-  const templateVars = { urls: urlDatabase };
+  //console.log("what is this:", req.cookies);
+  const templateVars = { urls: urlDatabase, username: req.cookies["username"] };
   res.render("urls_index", templateVars);
 });
 
 //gets page for "creating a new URL"
 app.get("/urls/new", (req, res) => {
-  //const templateVars = { shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL] };
-  res.render("urls_new");
+  //console.log("what is this:", req.cookies);
+  const templateVars = { username: req.cookies["username"] };
+  res.render("urls_new", templateVars);
 });
 
 //gets page of that "info"/edit page for that shortURL
 app.get("/urls/:shortURL", (req, res) => {
-  const templateVars = { shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL] };
+  const templateVars = { shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL], username: req.cookies["username"] };
   res.render("urls_show", templateVars);
 });
 
@@ -85,6 +90,14 @@ app.post("/urls/:id", (req, res) => {
   const shortURLKey = req.params.id;
   const newLongURL = req.body.newLongURL;
   urlDatabase[shortURLKey] = newLongURL;
+  res.redirect("/urls");
+});
+
+//login route
+app.post("/login", (req, res) => {
+  const usernameEntered = req.body.username;
+  //console.log("usernameEntered",usernameEntered);
+  res.cookie("username", usernameEntered);
   res.redirect("/urls");
 });
 
