@@ -47,11 +47,17 @@ function generateRandomString(lengthOfStr) {
   return randomStr;
 }
 
-// //function to generate a random String (6 char) for shortURL
-// function generateRandomId() {
-//   let randomId = Math.floor(Math.random() * 2000) + 1;
-//   return randomId;
-// }
+function findUserByEmail(email) {
+  for(const userId in users) {
+    //loop through the UserId objects, and check each email against input email argument
+    if (users[userId]["email"] === email) {
+      //return users[userId];
+      return true;
+    }
+  }
+  //return null;
+  return false;
+}
 
 //the home page
 app.get("/", (req, res) => {
@@ -70,7 +76,7 @@ app.get("/hello", (req, res) => {
 
 //gets page of URL index
 app.get("/urls", (req, res) => {
-  //console.log("what is this:", req.cookies);
+  console.log("what is this:", users[req.cookies.user_id]);
   const templateVars = { urls: urlDatabase, userObject: users[req.cookies.user_id] };
   res.render("urls_index", templateVars);
 });
@@ -145,15 +151,15 @@ app.post('/register', (req, res) => {
   const email = req.body.email;
   const password = req.body.password;
   
-  // if(!email || !password) {
-  //   return res.status(400).send("no user name or password provided");
-  // }
+  if(!email || !password) {
+    return res.status(400).send("no user name or password provided");
+  }
   
-  // const user = findUserByEmail(email);
-  
-  // if(user) {
-  //   return res.status(400).send("user already exists with that email");
-  // }
+  const userFind = findUserByEmail(email);
+  //bool: if true, send the status 400
+  if(userFind) {
+    return res.status(400).send("user already exists with that email");
+  }
   
   const id = generateRandomString(3);
   //I know in ES6 that we dont have to use blah:blah to explicitly define key:value pairs, but I
