@@ -1,15 +1,19 @@
 const express = require("express");
-const app = express();
 var cookieParser = require('cookie-parser')
+const bcrypt = require('bcryptjs');
+const morgan = require('morgan');
+
 
 const PORT = 8080;
 
+const app = express();
 app.set("view engine", "ejs");
 app.use(cookieParser());
 
 //middleware
 const bodyParser = require("body-parser");
 app.use(bodyParser.urlencoded({extended: true}));
+app.use(morgan('dev'));
 
 // "DATABASES"
 const urlDatabase = {
@@ -35,12 +39,12 @@ const users = {
   "aJ48lW": {
     id: "aJ48lW", 
     email: "user@example.com", 
-    password: "abc"
+    password: bcrypt.hashSync("abc", 10)
   },
  "456": {
     id: "456", 
     email: "user2@example.com", 
-    password: "def"
+    password: bcrypt.hashSync("def", 10)
   }
 };
 
@@ -264,15 +268,18 @@ app.post('/register', (req, res) => {
     return res.status(400).send("user already exists with that email");
   }
   
+  //hash the password before storing in database
+  const hashedPassword = bcrypt.hashSync(password, 10);
+
   const id = generateRandomString(3);
   //I know in ES6 that we dont have to use blah:blah to explicitly define key:value pairs, but I
   //want to write it like this so I understand better
   users[id] = {
     id: id, 
     email: email,
-    password: password
+    password: hashedPassword
   }
-  //console.log(users);
+  console.log(users);
   res.cookie("user_id", users[id]["id"]);
   res.redirect('/urls');
 })
@@ -302,9 +309,19 @@ app.post('/login', (req, res) => {
     return res.status(403).send('no user with that email was found');
   }
 
-  // does the password provided from the request
-  // match the password of the user
-  if (user.password !== password) {
+  // // old VERY BAD METHOD: does the password provided from the request match the password of the user
+  // if (user.password !== password) {
+  //   return res.status(403).send('password does not match')
+  // }
+
+  //Use bcrypt When Checking Passwords if they match
+  //bcrypt.compareSync("purple-monkey-dinosaur", hashedPassword);
+  //check if the password the user entered to login (after hashing) matches the stored+hashed password
+  let passwordMatch = bcrypt.compareSync(password, user.password); //bool
+  console.log("im curious about this. password entered, stored hash", password, user.password);
+  console.log("im curious about this. password entered+hashed, stored hash", bcrypt.hashSync(password, 10), user.password);
+
+  if (!passwordMatch) {
     return res.status(403).send('password does not match')
   }
 
