@@ -51,12 +51,12 @@ function findUserByEmail(email) {
   for(const userId in users) {
     //loop through the UserId objects, and check each email against input email argument
     if (users[userId]["email"] === email) {
-      //return users[userId];
-      return true;
+      return users[userId];
+      //return true;
     }
   }
-  //return null;
-  return false;
+  return null;
+  //return false;
 }
 
 //the home page
@@ -77,20 +77,20 @@ app.get("/hello", (req, res) => {
 //gets page of URL index
 app.get("/urls", (req, res) => {
   console.log("what is this:", users[req.cookies.user_id]);
-  const templateVars = { urls: urlDatabase, userObject: users[req.cookies.user_id] };
+  const templateVars = { urls: urlDatabase, user: users[req.cookies.user_id] };
   res.render("urls_index", templateVars);
 });
 
 //gets page for "creating a new URL"
 app.get("/urls/new", (req, res) => {
   //console.log("what is this:", req.cookies);
-  const templateVars = { userObject: users[req.cookies.user_id] };
+  const templateVars = { user: users[req.cookies.user_id] };
   res.render("urls_new", templateVars);
 });
 
 //gets page of that "info"/edit page for that shortURL
 app.get("/urls/:shortURL", (req, res) => {
-  const templateVars = { shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL], userObject: users[req.cookies.user_id] };
+  const templateVars = { shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL], user: users[req.cookies.user_id] };
   res.render("urls_show", templateVars);
 });
 
@@ -126,19 +126,12 @@ app.post("/urls/:id", (req, res) => {
   res.redirect("/urls");
 });
 
-//login route
-app.post("/login", (req, res) => {
-  const usernameEntered = req.body.username;
-  //console.log("usernameEntered",usernameEntered);
-  res.cookie("username", usernameEntered);
-  res.redirect("/urls");
-});
-
 //logout route
 app.post("/logout", (req, res) => {
   //const usernameEntered = req.body.username;
   //console.log("usernameEntered",usernameEntered);
-  res.clearCookie("username");
+  //res.clearCookie("username");
+  res.clearCookie("user_id");
   res.redirect("/urls");
 });
 
@@ -147,6 +140,8 @@ app.get('/register', (req, res) => {
   res.render('register');
 });
 
+//register: checks email and password for errors, and then add to users database
+//also sets user_id cookie
 app.post('/register', (req, res) => {
   const email = req.body.email;
   const password = req.body.password;
@@ -155,9 +150,9 @@ app.post('/register', (req, res) => {
     return res.status(400).send("no user name or password provided");
   }
   
-  const userFind = findUserByEmail(email);
-  //bool: if true, send the status 400
-  if(userFind) {
+  //returns user object associated with that email address
+  const user = findUserByEmail(email);
+  if (user) {
     return res.status(400).send("user already exists with that email");
   }
   
@@ -169,11 +164,43 @@ app.post('/register', (req, res) => {
     email: email,
     password: password
   }
-  console.log(users)
-
+  //console.log(users);
   res.cookie("user_id", users[id]["id"]);
+  res.redirect('/urls');
+})
 
-  res.redirect('/urls')
+//login endpoint: renders the login page
+app.get('/login', (req, res) => {
+  res.render('login');
+});
+
+//login: checks email and password for errors, also sets user_id cookie
+app.post('/login', (req, res) => {
+  //console.log(req.body);
+  const email = req.body.email;
+  const password = req.body.password;
+
+  // check if client sent down blank email or password
+  if( !email || !password ) {
+    return res.status(400).send("email or password cannot be blank");
+  }
+
+  //returns user object associated with that email address
+  const user = findUserByEmail(email);
+
+  // if that user exists with that email
+  if (!user) {
+    return res.status(403).send('no user with that email was found');
+  }
+
+  // does the password provided from the request
+  // match the password of the user
+  if (user.password !== password) {
+    return res.status(403).send('password does not match')
+  }
+
+  res.cookie('user_id', user.id);
+  res.redirect('/urls');
 })
 
 app.listen(PORT, () => {
