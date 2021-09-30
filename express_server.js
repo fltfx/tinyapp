@@ -154,6 +154,7 @@ app.get("/urls/:shortURL", (req, res) => {
 //finally redirects to "info"/edit page for that shortURL
 app.post("/urls", (req, res) => {
   // if they are not logged in (in other words, they don't have a user_id cookie), stop them from POST
+  console.log("line157", req.cookies.user_id);
   if(!req.cookies.user_id) {
     //res.redirect('/login');
     return res.status(401).send('you are not logged in');
@@ -184,6 +185,23 @@ app.get("/u/:shortURL", (req, res) => {
 
 //deleting a shortURL/longURL entry
 app.post("/urls/:shortURL/delete", (req, res) => {
+  // if they are not logged in (in other words, they don't have a user_id cookie), stop them from POST
+  if(!req.cookies.user_id) {
+    //res.redirect('/login');
+    return res.status(401).send('you are not logged in');
+  }
+
+  //check if the given shortURL id exists
+  if (!urlDatabase[req.params.id]) {
+    return res.status(401).send('Sorry, that short URL does not exist.');
+  }
+
+  //check if user is owner of that URL
+  let filteredDatabase = urlsForUser(req.cookies.user_id);
+  if (!filteredDatabase[req.params.id]) {
+    return res.status(401).send('Sorry, that URL does not belong to you.');
+  }
+  
   const shortURLKey = req.params.shortURL;
   delete urlDatabase[shortURLKey];
   res.redirect("/urls");
@@ -191,7 +209,24 @@ app.post("/urls/:shortURL/delete", (req, res) => {
 
 //updating a longURL
 app.post("/urls/:id", (req, res) => {
-  
+  // if they are not logged in (in other words, they don't have a user_id cookie), stop them from POST
+  if(!req.cookies.user_id) {
+    //res.redirect('/login');
+    console.log("cookies:",req.cookies.user_id);
+    return res.status(401).send('RIGHT HERE: you are not logged in');
+  }
+
+  //check if the given shortURL id exists
+  if (!urlDatabase[req.params.id]) {
+    return res.status(401).send('Sorry, that short URL does not exist.');
+  }
+
+  //check if user is owner of that URL
+  let filteredDatabase = urlsForUser(req.cookies.user_id);
+  if (!filteredDatabase[req.params.id]) {
+    return res.status(401).send('Sorry, that URL does not belong to you.');
+  }
+
   const shortURLKey = req.params.id;
   const newLongURL = req.body.newLongURL;
   urlDatabase[shortURLKey]["longURL"] = newLongURL;
