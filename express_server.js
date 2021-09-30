@@ -24,6 +24,10 @@ const urlDatabase = {
   a12345: {
     longURL: "https://www.google.com",
     userID: "456"
+  },
+  b23456: {
+    longURL: "https://www.apple.com",
+    userID: "aJ48lW"
 }
 };
 
@@ -69,6 +73,16 @@ function findUserByEmail(email) {
   //return false;
 }
 
+function urlsForUser(id) {
+  let filteredDatabase = {};
+  for (const url in urlDatabase) {
+    if (urlDatabase[url]["userID"] === id) {
+      filteredDatabase[url] = urlDatabase[url];
+    }
+  }
+  return filteredDatabase;
+}
+
 //the home page
 app.get("/", (req, res) => {
   res.send("Hello!");
@@ -86,8 +100,16 @@ app.get("/hello", (req, res) => {
 
 //gets page of URL index
 app.get("/urls", (req, res) => {
-  console.log("what is this:", users[req.cookies.user_id]);
-  const templateVars = { urls: urlDatabase, user: users[req.cookies.user_id] };
+  //console.log("what is this:", users[req.cookies.user_id]);
+  let templateVars;
+  // if they are not logged in (in other words, they don't have a user_id cookie)
+  if(!req.cookies.user_id) {
+    //res.status(401).send('you are not logged in');
+    templateVars = {user: undefined};
+  } else {
+    let filteredDatabase = urlsForUser(req.cookies.user_id);
+    templateVars = { urls: filteredDatabase, user: users[req.cookies.user_id] };
+  }
   res.render("urls_index", templateVars);
 });
 
@@ -108,7 +130,22 @@ app.get("/urls/new", (req, res) => {
 
 //gets page of that "info"/edit page for that shortURL
 app.get("/urls/:shortURL", (req, res) => {
-  const templateVars = { shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL]["longURL"], user: users[req.cookies.user_id] };
+  
+  let templateVars;
+  if(!req.cookies.user_id) {
+    //if user is not logged in
+    templateVars = {shortURL: true, user: undefined};
+  } else {
+    //check that the shortURL belongs to that user
+    let filteredDatabase = urlsForUser(req.cookies.user_id);
+    if (filteredDatabase[req.params.shortURL]) {
+      //shortURL found
+      templateVars = { shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL]["longURL"], user: users[req.cookies.user_id] };
+    } else {
+      //shortURL not found
+      templateVars = {shortURL: undefined, user: users[req.cookies.user_id]};
+    }
+  }
   console.log(templateVars);
   res.render("urls_show", templateVars);
 });
@@ -116,7 +153,6 @@ app.get("/urls/:shortURL", (req, res) => {
 //after entering a new URL, creating a random ShortURL for it and then saving it in urlDatabase
 //finally redirects to "info"/edit page for that shortURL
 app.post("/urls", (req, res) => {
-  
   // if they are not logged in (in other words, they don't have a user_id cookie), stop them from POST
   if(!req.cookies.user_id) {
     //res.redirect('/login');
