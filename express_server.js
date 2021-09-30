@@ -137,7 +137,8 @@ app.post("/logout", (req, res) => {
 
 //register endpoint: renders the register page
 app.get('/register', (req, res) => {
-  res.render('register');
+  const templateVars = { user: users[req.cookies.user_id] };
+  res.render('register', templateVars);
 });
 
 //register: checks email and password for errors, and then add to users database
@@ -171,7 +172,8 @@ app.post('/register', (req, res) => {
 
 //login endpoint: renders the login page
 app.get('/login', (req, res) => {
-  res.render('login');
+  const templateVars = { user: users[req.cookies.user_id] };
+  res.render('login', templateVars);
 });
 
 //login: checks email and password for errors, also sets user_id cookie
