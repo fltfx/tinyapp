@@ -1,16 +1,19 @@
 const express = require("express");
-var cookieParser = require('cookie-parser')
+//var cookieParser = require('cookie-parser');
+var cookieSession = require('cookie-session');
 const bcrypt = require('bcryptjs');
 const morgan = require('morgan');
-
-
 const PORT = 8080;
 
+//middleware
 const app = express();
 app.set("view engine", "ejs");
-app.use(cookieParser());
+//app.use(cookieParser());
+app.use(cookieSession({
+  name: 'cookiemonster',
+  keys: ['my secret key', 'yet another secret key']
+}));
 
-//middleware
 const bodyParser = require("body-parser");
 app.use(bodyParser.urlencoded({extended: true}));
 app.use(morgan('dev'));
@@ -104,15 +107,15 @@ app.get("/hello", (req, res) => {
 
 //gets page of URL index
 app.get("/urls", (req, res) => {
-  //console.log("what is this:", users[req.cookies.user_id]);
+  //console.log("what is this:", users[req.session.user_id]);
   let templateVars;
   // if they are not logged in (in other words, they don't have a user_id cookie)
-  if(!req.cookies.user_id) {
+  if(!req.session.user_id) {
     //res.status(401).send('you are not logged in');
     templateVars = {user: undefined};
   } else {
-    let filteredDatabase = urlsForUser(req.cookies.user_id);
-    templateVars = { urls: filteredDatabase, user: users[req.cookies.user_id] };
+    let filteredDatabase = urlsForUser(req.session.user_id);
+    templateVars = { urls: filteredDatabase, user: users[req.session.user_id] };
   }
   res.render("urls_index", templateVars);
 });
@@ -122,13 +125,13 @@ app.get("/urls/new", (req, res) => {
   //console.log("what is this:", req.cookies);
 
   // if they are not logged in (in other words, they don't have a user_id cookie)
-  if(!req.cookies.user_id) {
+  if(!req.session.user_id) {
     res.redirect('/login');
     //res.status(401).send('you are not logged in');
     return;
   }
 
-  const templateVars = { user: users[req.cookies.user_id] };
+  const templateVars = { user: users[req.session.user_id] };
   res.render("urls_new", templateVars);
 });
 
@@ -136,18 +139,18 @@ app.get("/urls/new", (req, res) => {
 app.get("/urls/:shortURL", (req, res) => {
   
   let templateVars;
-  if(!req.cookies.user_id) {
+  if(!req.session.user_id) {
     //if user is not logged in
     templateVars = {shortURL: true, user: undefined};
   } else {
     //check that the shortURL belongs to that user
-    let filteredDatabase = urlsForUser(req.cookies.user_id);
+    let filteredDatabase = urlsForUser(req.session.user_id);
     if (filteredDatabase[req.params.shortURL]) {
       //shortURL found
-      templateVars = { shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL]["longURL"], user: users[req.cookies.user_id] };
+      templateVars = { shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL]["longURL"], user: users[req.session.user_id] };
     } else {
       //shortURL not found
-      templateVars = {shortURL: undefined, user: users[req.cookies.user_id]};
+      templateVars = {shortURL: undefined, user: users[req.session.user_id]};
     }
   }
   console.log(templateVars);
@@ -158,8 +161,8 @@ app.get("/urls/:shortURL", (req, res) => {
 //finally redirects to "info"/edit page for that shortURL
 app.post("/urls", (req, res) => {
   // if they are not logged in (in other words, they don't have a user_id cookie), stop them from POST
-  console.log("line157", req.cookies.user_id);
-  if(!req.cookies.user_id) {
+  console.log("line157", req.session.user_id);
+  if(!req.session.user_id) {
     //res.redirect('/login');
     return res.status(401).send('you are not logged in');
   }
@@ -169,7 +172,7 @@ app.post("/urls", (req, res) => {
   console.log("urldatabase", urlDatabase);
   urlDatabase[newShortURL] = {
     longURL: req.body["longURL"],
-    userID: req.cookies.user_id
+    userID: req.session.user_id
   };
   console.log(urlDatabase);
   res.redirect("/urls/"+newShortURL);
@@ -190,19 +193,20 @@ app.get("/u/:shortURL", (req, res) => {
 //deleting a shortURL/longURL entry
 app.post("/urls/:shortURL/delete", (req, res) => {
   // if they are not logged in (in other words, they don't have a user_id cookie), stop them from POST
-  if(!req.cookies.user_id) {
+  if(!req.session.user_id) {
     //res.redirect('/login');
     return res.status(401).send('you are not logged in');
   }
 
   //check if the given shortURL id exists
-  if (!urlDatabase[req.params.id]) {
-    return res.status(401).send('Sorry, that short URL does not exist.');
+  console.log(req.params);
+  if (!urlDatabase[req.params.shortURL]) {
+    return res.status(401).send('??Sorry, that short URL does not exist.');
   }
 
   //check if user is owner of that URL
-  let filteredDatabase = urlsForUser(req.cookies.user_id);
-  if (!filteredDatabase[req.params.id]) {
+  let filteredDatabase = urlsForUser(req.session.user_id);
+  if (!filteredDatabase[req.params.shortURL]) {
     return res.status(401).send('Sorry, that URL does not belong to you.');
   }
   
@@ -214,9 +218,9 @@ app.post("/urls/:shortURL/delete", (req, res) => {
 //updating a longURL
 app.post("/urls/:id", (req, res) => {
   // if they are not logged in (in other words, they don't have a user_id cookie), stop them from POST
-  if(!req.cookies.user_id) {
+  if(!req.session.user_id) {
     //res.redirect('/login');
-    console.log("cookies:",req.cookies.user_id);
+    console.log("cookies:",req.session.user_id);
     return res.status(401).send('RIGHT HERE: you are not logged in');
   }
 
@@ -226,7 +230,7 @@ app.post("/urls/:id", (req, res) => {
   }
 
   //check if user is owner of that URL
-  let filteredDatabase = urlsForUser(req.cookies.user_id);
+  let filteredDatabase = urlsForUser(req.session.user_id);
   if (!filteredDatabase[req.params.id]) {
     return res.status(401).send('Sorry, that URL does not belong to you.');
   }
@@ -239,16 +243,14 @@ app.post("/urls/:id", (req, res) => {
 
 //logout route
 app.post("/logout", (req, res) => {
-  //const usernameEntered = req.body.username;
-  //console.log("usernameEntered",usernameEntered);
-  //res.clearCookie("username");
-  res.clearCookie("user_id");
+  //Using Cookie Parser: res.clearCookie("user_id");
+  req.session = null;
   res.redirect("/urls");
 });
 
 //register endpoint: renders the register page
 app.get('/register', (req, res) => {
-  const templateVars = { user: users[req.cookies.user_id] };
+  const templateVars = { user: users[req.session.user_id] };
   res.render('register', templateVars);
 });
 
@@ -280,13 +282,14 @@ app.post('/register', (req, res) => {
     password: hashedPassword
   }
   console.log(users);
-  res.cookie("user_id", users[id]["id"]);
+  //Using cookie parser: res.cookie("user_id", users[id]["id"]);
+  req.session.user_id = users[id]["id"];
   res.redirect('/urls');
 })
 
 //login endpoint: renders the login page
 app.get('/login', (req, res) => {
-  const templateVars = { user: users[req.cookies.user_id] };
+  const templateVars = { user: users[req.session.user_id] };
   res.render('login', templateVars);
 });
 
@@ -306,7 +309,7 @@ app.post('/login', (req, res) => {
 
   // if that user exists with that email
   if (!user) {
-    return res.status(403).send('no user with that email was found');
+    return res.status(403).send('No user with that email was found');
   }
 
   // // old VERY BAD METHOD: does the password provided from the request match the password of the user
@@ -325,7 +328,8 @@ app.post('/login', (req, res) => {
     return res.status(403).send('password does not match')
   }
 
-  res.cookie('user_id', user.id);
+  //Using Cookie Parser: res.cookie('user_id', user.id);
+  req.session.user_id = user.id;
   res.redirect('/urls');
 })
 
