@@ -1,6 +1,5 @@
 const express = require("express");
-//var cookieParser = require('cookie-parser');
-var cookieSession = require('cookie-session');
+const cookieSession = require('cookie-session');
 const bcrypt = require('bcryptjs');
 const morgan = require('morgan');
 const PORT = 8080;
@@ -9,7 +8,6 @@ const { findUserByEmail, generateRandomString, urlsForUser } = require('./helper
 //middleware
 const app = express();
 app.set("view engine", "ejs");
-//app.use(cookieParser());
 app.use(cookieSession({
   name: 'cookiemonster',
   keys: ['my secret key', 'yet another secret key']
@@ -22,12 +20,12 @@ app.use(morgan('dev'));
 // "DATABASES"
 const urlDatabase = {
   b6UTxQ: {
-      longURL: "https://www.tsn.ca",
-      userID: "aJ48lW"
+    longURL: "https://www.tsn.ca",
+    userID: "aJ48lW"
   },
   i3BoGr: {
-      longURL: "https://www.google.ca",
-      userID: "aJ48lW"
+    longURL: "https://www.google.ca",
+    userID: "aJ48lW"
   },
   a12345: {
     longURL: "https://www.google.com",
@@ -36,18 +34,18 @@ const urlDatabase = {
   b23456: {
     longURL: "https://www.apple.com",
     userID: "aJ48lW"
-}
+  }
 };
 
-const users = { 
+const users = {
   "aJ48lW": {
-    id: "aJ48lW", 
-    email: "user@example.com", 
+    id: "aJ48lW",
+    email: "user@example.com",
     password: bcrypt.hashSync("abc", 10)
   },
- "456": {
-    id: "456", 
-    email: "user2@example.com", 
+  "456": {
+    id: "456",
+    email: "user2@example.com",
     password: bcrypt.hashSync("def", 10)
   }
 };
@@ -69,11 +67,9 @@ app.get("/hello", (req, res) => {
 
 //gets page of URL index
 app.get("/urls", (req, res) => {
-  //console.log("what is this:", users[req.session.user_id]);
   let templateVars;
   // if they are not logged in (in other words, they don't have a user_id cookie)
-  if(!req.session.user_id) {
-    //res.status(401).send('you are not logged in');
+  if (!req.session.user_id) {
     templateVars = {user: undefined};
   } else {
     let filteredDatabase = urlsForUser(req.session.user_id, urlDatabase);
@@ -84,12 +80,10 @@ app.get("/urls", (req, res) => {
 
 //gets page for "creating a new URL"
 app.get("/urls/new", (req, res) => {
-  //console.log("what is this:", req.cookies);
 
   // if they are not logged in (in other words, they don't have a user_id cookie)
-  if(!req.session.user_id) {
+  if (!req.session.user_id) {
     res.redirect('/login');
-    //res.status(401).send('you are not logged in');
     return;
   }
 
@@ -101,18 +95,21 @@ app.get("/urls/new", (req, res) => {
 app.get("/urls/:shortURL", (req, res) => {
   
   let templateVars;
-  if(!req.session.user_id) {
+  if (!req.session.user_id) {
     //if user is not logged in
-    templateVars = {shortURL: true, user: undefined};
+    templateVars = {shortURL: true, longURL: undefined, user: undefined};
   } else {
     //check that the shortURL belongs to that user
     let filteredDatabase = urlsForUser(req.session.user_id, urlDatabase);
     if (filteredDatabase[req.params.shortURL]) {
-      //shortURL found
+      //shortURL found and belongs to use
       templateVars = { shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL]["longURL"], user: users[req.session.user_id] };
+    } else if (urlDatabase[req.params.shortURL]) {
+      //shortURL exists in master database, but does not belong to user
+      templateVars = {shortURL: "exists", longURL: undefined, user: users[req.session.user_id]};
     } else {
-      //shortURL not found
-      templateVars = {shortURL: undefined, user: users[req.session.user_id]};
+      //shortURL does not exist in master database
+      templateVars = {shortURL: "does not exist", longURL: undefined, user: users[req.session.user_id]};
     }
   }
   console.log(templateVars);
@@ -124,8 +121,7 @@ app.get("/urls/:shortURL", (req, res) => {
 app.post("/urls", (req, res) => {
   // if they are not logged in (in other words, they don't have a user_id cookie), stop them from POST
   console.log("line157", req.session.user_id);
-  if(!req.session.user_id) {
-    //res.redirect('/login');
+  if (!req.session.user_id) {
     return res.status(401).send('you are not logged in');
   }
   
@@ -137,14 +133,13 @@ app.post("/urls", (req, res) => {
     userID: req.session.user_id
   };
   console.log(urlDatabase);
-  res.redirect("/urls/"+newShortURL);
+  res.redirect("/urls/" + newShortURL);
 });
 
 //redirecting from "/u/:shortURL" to it's actual longURL
 app.get("/u/:shortURL", (req, res) => {
   //if id does not exist
-  if(!urlDatabase[req.params.shortURL]) {
-    //res.redirect('/login');
+  if (!urlDatabase[req.params.shortURL]) {
     return res.status(400).send('that shortURL does not exist');
   }
 
@@ -155,8 +150,7 @@ app.get("/u/:shortURL", (req, res) => {
 //deleting a shortURL/longURL entry
 app.post("/urls/:shortURL/delete", (req, res) => {
   // if they are not logged in (in other words, they don't have a user_id cookie), stop them from POST
-  if(!req.session.user_id) {
-    //res.redirect('/login');
+  if (!req.session.user_id) {
     return res.status(401).send('you are not logged in');
   }
 
@@ -180,8 +174,7 @@ app.post("/urls/:shortURL/delete", (req, res) => {
 //updating a longURL
 app.post("/urls/:id", (req, res) => {
   // if they are not logged in (in other words, they don't have a user_id cookie), stop them from POST
-  if(!req.session.user_id) {
-    //res.redirect('/login');
+  if (!req.session.user_id) {
     console.log("cookies:",req.session.user_id);
     return res.status(401).send('RIGHT HERE: you are not logged in');
   }
@@ -205,7 +198,6 @@ app.post("/urls/:id", (req, res) => {
 
 //logout route
 app.post("/logout", (req, res) => {
-  //Using Cookie Parser: res.clearCookie("user_id");
   req.session = null;
   res.redirect("/urls");
 });
@@ -222,7 +214,7 @@ app.post('/register', (req, res) => {
   const email = req.body.email;
   const password = req.body.password;
   
-  if(!email || !password) {
+  if (!email || !password) {
     return res.status(400).send("no user name or password provided");
   }
   
@@ -239,15 +231,14 @@ app.post('/register', (req, res) => {
   //I know in ES6 that we dont have to use blah:blah to explicitly define key:value pairs, but I
   //want to write it like this so I understand better
   users[id] = {
-    id: id, 
+    id: id,
     email: email,
     password: hashedPassword
-  }
+  };
   console.log(users);
-  //Using cookie parser: res.cookie("user_id", users[id]["id"]);
   req.session.user_id = users[id]["id"];
   res.redirect('/urls');
-})
+});
 
 //login endpoint: renders the login page
 app.get('/login', (req, res) => {
@@ -257,12 +248,11 @@ app.get('/login', (req, res) => {
 
 //login: checks email and password for errors, also sets user_id cookie
 app.post('/login', (req, res) => {
-  //console.log(req.body);
   const email = req.body.email;
   const password = req.body.password;
 
   // check if client sent down blank email or password
-  if( !email || !password ) {
+  if (!email || !password) {
     return res.status(400).send("email or password cannot be blank");
   }
 
@@ -274,26 +264,17 @@ app.post('/login', (req, res) => {
     return res.status(403).send('No user with that email was found');
   }
 
-  // // old VERY BAD METHOD: does the password provided from the request match the password of the user
-  // if (user.password !== password) {
-  //   return res.status(403).send('password does not match')
-  // }
-
   //Use bcrypt When Checking Passwords if they match
-  //bcrypt.compareSync("purple-monkey-dinosaur", hashedPassword);
   //check if the password the user entered to login (after hashing) matches the stored+hashed password
   let passwordMatch = bcrypt.compareSync(password, user.password); //bool
-  console.log("im curious about this. password entered, stored hash", password, user.password);
-  console.log("im curious about this. password entered+hashed, stored hash", bcrypt.hashSync(password, 10), user.password);
 
   if (!passwordMatch) {
-    return res.status(403).send('password does not match')
+    return res.status(403).send('password does not match');
   }
 
-  //Using Cookie Parser: res.cookie('user_id', user.id);
   req.session.user_id = user.id;
   res.redirect('/urls');
-})
+});
 
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`);

@@ -8,7 +8,7 @@
 
 <body>
   <%- include('partials/_header') %>
-  <% if(user && shortURL) { %>
+  <% if(user && shortURL && longURL) { %>
   <div class="card text-center">
       <div class="card-header"></div>
       <div class="card-body">
@@ -27,11 +27,14 @@
     </div>
   </div>
   <% } %> 
-  <% if (!shortURL) { %> 
-    Sorry, you do not have access to that shortURL.
+  <% if (!user) { %> 
+    Please login to view that URL information page.
     <% } %>
-    <% if (!user){ %>
-      Please login to view that URL information page.
+  <% if (shortURL === "exists") { %> 
+    Sorry, you do not have access to that shortURL. Please login to that user's account to view that URL information page.
+    <% } %>
+    <% if (shortURL === "does not exist"){ %>
+      Sorry, that shortURL does not exist.
       <% } %> 
   <!-- Bootstrap JS -->
   <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>

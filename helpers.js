@@ -1,8 +1,7 @@
 function findUserByEmail(email, users) {
-  for(const userId in users) {
+  for (const userId in users) {
     //loop through the UserId objects, and check each email against input email argument
     if (users[userId]["email"] === email) {
-      //return user object
       return users[userId];
     }
   }
