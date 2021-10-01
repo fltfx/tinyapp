@@ -4,6 +4,7 @@ var cookieSession = require('cookie-session');
 const bcrypt = require('bcryptjs');
 const morgan = require('morgan');
 const PORT = 8080;
+const { findUserByEmail, generateRandomString, urlsForUser } = require('./helpers');
 
 //middleware
 const app = express();
@@ -51,45 +52,6 @@ const users = {
   }
 };
 
-//function to generate a random String (6 char) for shortURL
-function generateRandomString(lengthOfStr) {
-  let sliceIndex;
-  if (lengthOfStr === 6) {
-    sliceIndex = 7;
-  } else if (lengthOfStr === 3) {
-    sliceIndex = 10;
-  }
-
-  let randomStr = Math.random().toString(36).slice(sliceIndex);
-  if (randomStr.length < lengthOfStr) {
-    //add another "0" to the end if randomStr is only lengthOfStr-1 in length
-    randomStr += "0";
-  }
-  return randomStr;
-}
-
-function findUserByEmail(email) {
-  for(const userId in users) {
-    //loop through the UserId objects, and check each email against input email argument
-    if (users[userId]["email"] === email) {
-      return users[userId];
-      //return true;
-    }
-  }
-  return null;
-  //return false;
-}
-
-function urlsForUser(id) {
-  let filteredDatabase = {};
-  for (const url in urlDatabase) {
-    if (urlDatabase[url]["userID"] === id) {
-      filteredDatabase[url] = urlDatabase[url];
-    }
-  }
-  return filteredDatabase;
-}
-
 //the home page
 app.get("/", (req, res) => {
   res.send("Hello!");
@@ -114,7 +76,7 @@ app.get("/urls", (req, res) => {
     //res.status(401).send('you are not logged in');
     templateVars = {user: undefined};
   } else {
-    let filteredDatabase = urlsForUser(req.session.user_id);
+    let filteredDatabase = urlsForUser(req.session.user_id, urlDatabase);
     templateVars = { urls: filteredDatabase, user: users[req.session.user_id] };
   }
   res.render("urls_index", templateVars);
@@ -144,7 +106,7 @@ app.get("/urls/:shortURL", (req, res) => {
     templateVars = {shortURL: true, user: undefined};
   } else {
     //check that the shortURL belongs to that user
-    let filteredDatabase = urlsForUser(req.session.user_id);
+    let filteredDatabase = urlsForUser(req.session.user_id, urlDatabase);
     if (filteredDatabase[req.params.shortURL]) {
       //shortURL found
       templateVars = { shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL]["longURL"], user: users[req.session.user_id] };
@@ -205,7 +167,7 @@ app.post("/urls/:shortURL/delete", (req, res) => {
   }
 
   //check if user is owner of that URL
-  let filteredDatabase = urlsForUser(req.session.user_id);
+  let filteredDatabase = urlsForUser(req.session.user_id, urlDatabase);
   if (!filteredDatabase[req.params.shortURL]) {
     return res.status(401).send('Sorry, that URL does not belong to you.');
   }
@@ -230,7 +192,7 @@ app.post("/urls/:id", (req, res) => {
   }
 
   //check if user is owner of that URL
-  let filteredDatabase = urlsForUser(req.session.user_id);
+  let filteredDatabase = urlsForUser(req.session.user_id, urlDatabase);
   if (!filteredDatabase[req.params.id]) {
     return res.status(401).send('Sorry, that URL does not belong to you.');
   }
@@ -265,7 +227,7 @@ app.post('/register', (req, res) => {
   }
   
   //returns user object associated with that email address
-  const user = findUserByEmail(email);
+  const user = findUserByEmail(email, users);
   if (user) {
     return res.status(400).send("user already exists with that email");
   }
@@ -305,7 +267,7 @@ app.post('/login', (req, res) => {
   }
 
   //returns user object associated with that email address
-  const user = findUserByEmail(email);
+  const user = findUserByEmail(email, users);
 
   // if that user exists with that email
   if (!user) {
